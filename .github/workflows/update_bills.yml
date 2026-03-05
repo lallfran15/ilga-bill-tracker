@@ -1,0 +1,35 @@
+name: Daily Bill Update
+
+on:
+  schedule:
+    # Runs at 14:00 UTC, which is 8:00 AM CST
+    - cron: '0 14 * * *'
+  workflow_dispatch: # Allows you to click a button to run it manually
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Run data fetch script
+        env:
+          LEGISCAN_API_KEY: ${{ secrets.LEGISCAN_API_KEY }}
+        run: python fetch_bills.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add bills_data.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update bill statuses" && git push)
