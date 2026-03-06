@@ -34,13 +34,14 @@ def send_email_alert(changes):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Outlook/Office365 SMTP Configuration
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
+        # Gmail SMTP Configuration
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(EMAIL_USER, EMAIL_PASSWORD)
         server.send_message(msg)
         server.quit()
         print("Email alert sent successfully!")
+    except smtplib.SMTPAuthenticationError:
+        print("Failed to send email: Authentication failed. If using Gmail, ensure you are using an App Password instead of your regular password.")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
