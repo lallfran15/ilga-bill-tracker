@@ -34,7 +34,7 @@ def send_email_alert(changes):
 
     try:
         # Outlook/Office365 SMTP Configuration
-        server = smtplib.SMTP('smtp.office365.com', 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASSWORD)
         server.send_message(msg)
