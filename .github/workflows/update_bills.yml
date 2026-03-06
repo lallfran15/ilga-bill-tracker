@@ -2,9 +2,9 @@ name: Daily Bill Update
 
 on:
   schedule:
-    # Runs at 14:00 UTC, which is 8:00 AM CST
+    # Runs at 14:00 UTC (8:00 AM CST)
     - cron: '0 14 * * *'
-  workflow_dispatch: # Allows you to click a button to run it manually
+  workflow_dispatch: 
 
 jobs:
   update-data:
@@ -20,7 +20,8 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests pandas
+        # This now reads your requirements.txt file to install BeautifulSoup!
+        run: pip install -r requirements.txt
 
       - name: Run data fetch script
         env:
@@ -30,9 +31,17 @@ jobs:
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         run: python fetch_bills.py
 
+      - name: Run committee scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: python scrape_committee.py
+
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add bills_data.csv
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update bill statuses" && git push)
+          # Using -A tells it to save ALL changed files, including your new .txt files
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update bills and committees" && git push)
