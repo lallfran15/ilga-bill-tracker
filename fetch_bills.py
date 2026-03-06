@@ -9,8 +9,8 @@ from email.mime.multipart import MIMEMultipart
 API_KEY = os.environ.get("LEGISCAN_API_KEY")
 EMAIL_USER = os.environ.get("EMAIL_USER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
-EMAIL_RECEIVER = os.environ.get("EMAIL_SEND_TO")
-#EMAIL_RECEIVER = EMAIL_USER # Sends the alert directly to yourself
+#EMAIL_RECEIVER = os.environ.get("EMAIL_SEND_TO")
+EMAIL_RECEIVER = EMAIL_USER # Sends the alert directly to yourself
 STATE = "IL"
 BILLS_FILE = "tracked_bills.txt"
 OUTPUT_FILE = "bills_data.csv"
