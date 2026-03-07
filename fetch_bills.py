@@ -124,3 +124,7 @@ def fetch_bill_data():
 
 if __name__ == "__main__":
     fetch_bill_data()
+    
+    # Force a file change so GitHub always records a new timestamp
+    with open("last_checked.txt", "w") as f:
+        f.write("System checked on run.")
