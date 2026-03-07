@@ -9,22 +9,29 @@ st.set_page_config(page_title="ILGA Bill Tracker", layout="wide")
 st.title("🏛️ Illinois General Assembly Bill Tracker")
 
 try:
-    # 1. Look at the data file and get the exact time it was saved
-    file_path = "bills_data.csv"
-    timestamp = os.path.getmtime(file_path)
+    # 1. Define the files
+    time_file = "last_checked.txt"
+    data_file = "bills_data.csv"
     
-    # 2. Convert the raw server time (UTC) into Central Time
+    # 2. Look at the heartbeat file for the exact run time
+    if os.path.exists(time_file):
+        timestamp = os.path.getmtime(time_file)
+    else:
+        # Fallback just in case it hasn't run the new update yet
+        timestamp = os.path.getmtime(data_file)
+    
+    # 3. Convert the raw server time (UTC) into Central Time
     utc_time = datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
     local_time = utc_time.astimezone(ZoneInfo("America/Chicago"))
     
-    # 3. Format it to look nice (e.g., "March 05, 2026 at 08:02 AM CST")
+    # 4. Format it to look nice
     formatted_time = local_time.strftime("%B %d, %Y at %I:%M %p %Z")
     
-    # 4. Display the dynamic message
-    st.markdown(f"**This dashboard was last updated:** {formatted_time}")
+    # 5. Display the dynamic "Last Checked" message
+    st.markdown(f"**System last checked for updates:** {formatted_time}")
 
-    # 5. Read and display the data table
-    df = pd.read_csv(file_path)
+    # 6. Read and display the actual data table
+    df = pd.read_csv(data_file)
     
     st.dataframe(
         df,
