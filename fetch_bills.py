@@ -2,6 +2,7 @@ import os
 import requests
 import pandas as pd
 import smtplib
+import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -124,7 +125,7 @@ def fetch_bill_data():
 
 if __name__ == "__main__":
     fetch_bill_data()
-    
-    # Force a file change so GitHub always records a new timestamp
+
+    # Write the exact current time so Git is forced to see a unique change!
     with open("last_checked.txt", "w") as f:
-        f.write("System checked on run.")
+        f.write(f"System checked at: {datetime.datetime.now()}")
