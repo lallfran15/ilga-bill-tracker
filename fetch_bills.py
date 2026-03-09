@@ -2,23 +2,21 @@ import os
 import requests
 import pandas as pd
 import smtplib
-import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import datetime
 
 # --- Configuration ---
 API_KEY = os.environ.get("LEGISCAN_API_KEY")
 EMAIL_USER = os.environ.get("EMAIL_USER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
-EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
-#EMAIL_RECEIVER = EMAIL_USER # Sends the alert directly to yourself
+EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER") 
 STATE = "IL"
 BILLS_FILE = "tracked_bills.txt"
 OUTPUT_FILE = "bills_data.csv"
 
 def send_email_alert(changes):
-    """Logs into the SMTP server and sends a summary of bill changes."""
-    if not EMAIL_USER or not EMAIL_PASSWORD:
+    if not EMAIL_USER or not EMAIL_PASSWORD or not EMAIL_RECEIVER:
         print("Email credentials not found. Skipping email alert.")
         return
 
@@ -35,14 +33,12 @@ def send_email_alert(changes):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Gmail SMTP Configuration
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
         server.login(EMAIL_USER, EMAIL_PASSWORD)
         server.send_message(msg)
         server.quit()
         print("Email alert sent successfully!")
-    except smtplib.SMTPAuthenticationError:
-        print("Failed to send email: Authentication failed. If using Gmail, ensure you are using an App Password instead of your regular password.")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -51,10 +47,25 @@ def fetch_bill_data():
         print("Error: LEGISCAN_API_KEY environment variable not found.")
         return
 
-    # 1. Read tracked bills
+    # 1. Read tracked bills, positions, AND custom notes
+    tracked_bills = {}
     try:
         with open(BILLS_FILE, "r") as f:
-            tracked_bills = [line.strip().upper() for line in f.readlines() if line.strip()]
+            for line in f:
+                if line.strip():
+                    # Split the line at the first TWO commas
+                    parts = line.strip().split(",", 2)
+                    bill_num = parts[0].strip().upper()
+                    
+                    # Safely grab the position and note if they exist
+                    position = parts[1].strip() if len(parts) > 1 else ""
+                    note = parts[2].strip() if len(parts) > 2 else ""
+                    
+                    # Save them together for this bill
+                    tracked_bills[bill_num] = {
+                        "position": position,
+                        "note": note
+                    }
     except FileNotFoundError:
         print(f"Error: {BILLS_FILE} not found.")
         return
@@ -101,11 +112,14 @@ def fetch_bill_data():
                         'new': current_action
                     })
             
+            # Add the data to our final table, including the new Position column!
             results.append({
                 "Bill Number": bill_number,
+                "Position": tracked_bills[bill_number]["position"],
                 "Title": bill_info.get("title"),
                 "Last Action": current_action,
                 "Action Date": bill_info.get("last_action_date"),
+                "Notes": tracked_bills[bill_number]["note"], 
                 "LegiScan Link": bill_info.get("url")
             })
 
@@ -115,7 +129,6 @@ def fetch_bill_data():
         df.to_csv(OUTPUT_FILE, index=False)
         print(f"Success! Updated {OUTPUT_FILE} with {len(results)} bills.")
         
-        # 6. Trigger the email if the changes list isn't empty
         if changes:
             send_email_alert(changes)
         else:
@@ -125,7 +138,7 @@ def fetch_bill_data():
 
 if __name__ == "__main__":
     fetch_bill_data()
-
-    # Write the exact current time so Git is forced to see a unique change!
+    
+    # Force a file change so GitHub always records a new timestamp
     with open("last_checked.txt", "w") as f:
         f.write(f"System checked at: {datetime.datetime.now()}")
