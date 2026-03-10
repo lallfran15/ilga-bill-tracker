@@ -2,8 +2,8 @@ name: Daily Bill Update
 
 on:
   schedule:
-    # Runs at 14:00, 18:00, and 22:00 UTC (8am, 12pm, 4pm CST)
-    - cron: '0 14,18,22 * * *'
+    # Runs at 13:00, 17:00, and 21:00 UTC (8:00 AM, 12:00 PM, 4:00 PM CDT)
+    - cron: '0 13,17,21 * * *'
   workflow_dispatch: 
 
 jobs:
@@ -20,8 +20,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        # This now reads your requirements.txt file to install BeautifulSoup!
-        run: pip install -r requirements.txt
+        run: pip install requests pandas beautifulsoup4
 
       - name: Run data fetch script
         env:
@@ -42,6 +41,5 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          # Using -A tells it to save ALL changed files, including your new .txt files
           git add -A
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update bills and committees" && git push)
