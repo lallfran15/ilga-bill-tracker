@@ -33,7 +33,7 @@ COMMITTEES = [
     {
         "name": "Senate Education",
         "url": "https://ilga.gov/Senate/Committees/Hearings/3070",
-        "selector": "#scheduled > div > table > tbody > tr > td > p"
+        "selector": "#scheduled > div > table > tbody > tr > td > p",
         "file": "senate_education.txt"
     }
 ]
