@@ -15,21 +15,25 @@ COMMITTEES = [
     {
         "name": "Ethics & Elections",
         "url": "https://ilga.gov/House/Committees/Hearings/3110",
+        "selector": "#scheduled > div > table > tbody > tr > td:nth-child(1)",
         "file": "schedule_ethics_elections.txt"
     },
     {
         "name": "House Education Policy",
-        "url": "https://ilga.gov/House/Committees/Hearings/3056", 
+        "url": "https://ilga.gov/House/Committees/Hearings/3056",
+        "selector": "#scheduled > div > table > tbody > tr > td:nth-child(1)",
         "file": "house_edu_policy.txt"
     },
     {
         "name": "House Elementary & Secondary Education Admin",
         "url": "https://ilga.gov/House/Committees/Hearings/3097",
+        "selector": "#scheduled > div > table > tbody > tr > td:nth-child(1)",
         "file": "house_ele_second_admin.txt"
     },
     {
         "name": "Senate Education",
         "url": "https://ilga.gov/Senate/Committees/Hearings/3070",
+        "selector": "#scheduled > div > table > tbody > tr > td > p"
         "file": "senate_education.txt"
     }
 ]
@@ -66,14 +70,19 @@ def send_alert(updates):
 def scrape_all_committees():
     all_updates = []
 
-    # 2. THE LOOP: Go through the list one by one
     for committee in COMMITTEES:
         try:
             response = requests.get(committee["url"])
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Extract the text (adjust this selector if your previous script used a specific HTML tag)
-            schedule_text = soup.get_text(separator="\n", strip=True) 
+            # 2. THE PRECISION EXTRACTION: Only grab the specific HTML element
+            target_element = soup.select_one(committee["selector"])
+            
+            if target_element:
+                schedule_text = target_element.get_text(separator="\n", strip=True) 
+            else:
+                print(f"Warning: Could not find the HTML selector '{committee['selector']}' on the {committee['name']} page.")
+                continue # Skip this committee and move to the next one
             
             # Load the previous memory for THIS specific committee
             old_text = ""
@@ -86,17 +95,17 @@ def scrape_all_committees():
                 with open(committee["file"], "w") as f:
                     f.write(schedule_text)
                 
-                # We only care if a hearing is actually scheduled, not if it just says "No Hearings"
+                # We only care if a hearing is actually scheduled
                 if "No Hearings Scheduled" not in schedule_text:
                     all_updates.append({
                         "name": committee["name"],
-                        "text": schedule_text[:500] # Grabs the first 500 characters of the schedule
+                        "text": schedule_text[:500] 
                     })
                     
         except Exception as e:
             print(f"Error scraping {committee['name']}: {e}")
 
-    # 3. Send one single email if anything changed
+    # Send one single email if anything changed
     if all_updates:
         send_alert(all_updates)
     else:
