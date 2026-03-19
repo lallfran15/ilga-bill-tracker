@@ -41,21 +41,21 @@ try:
     )
     df["Action Date"] = df["Action Date"].dt.strftime("%Y-%m-%d")
 
-    # Color-code rows by position
-    def highlight_position(row):
-        position = str(row.get("Position", "")).strip().lower()
-        if position == "oppose":
-            return ["background-color: #ffcccc"] * len(row)
-        elif position == "core bill":
-            return ["background-color: #ccffcc"] * len(row)
-        elif position == "monitor":
-            return ["background-color: #fff3cc"] * len(row)
-        return [""] * len(row)
+    # Color-code position with emoji indicators
+    def format_position(pos):
+        p = str(pos).strip().lower()
+        if p == "core bill":
+            return "🟢 Core Bill"
+        elif p == "oppose":
+            return "🔴 Oppose"
+        elif p == "monitor":
+            return "🟡 Monitor"
+        return pos
 
-    styled_df = df.style.apply(highlight_position, axis=1)
+    df["Position"] = df["Position"].apply(format_position)
 
     st.dataframe(
-        styled_df,
+        df,
         column_config={
             "LegiScan Link": st.column_config.LinkColumn("View on LegiScan"),
             "Days Since Action": st.column_config.NumberColumn(
@@ -67,28 +67,28 @@ try:
         use_container_width=True,
     )
 
-    # 7. Committee Hearing Schedules
-    st.markdown("---")
-    st.subheader("📅 Upcoming Committee Hearings")
-
-    committees = [
-        {"name": "Ethics & Elections", "file": "schedule_ethics_elections.txt"},
-        {"name": "House Education Policy", "file": "house_edu_policy.txt"},
-        {"name": "House Elementary & Secondary Education Admin", "file": "house_ele_second_admin.txt"},
-        {"name": "Senate Education", "file": "senate_education.txt"},
-    ]
-
-    for committee in committees:
-        if os.path.exists(committee["file"]):
-            with open(committee["file"], "r") as f:
-                text = f.read().strip()
-            if "No Hearings Scheduled" in text:
-                st.markdown(f"**{committee['name']}:** No hearings scheduled")
-            else:
-                st.markdown(f"**{committee['name']}:** {text}")
-        else:
-            st.markdown(f"**{committee['name']}:** _No data yet_")
-
 except FileNotFoundError:
     st.markdown("This dashboard tracks target bills and automatically updates daily.")
     st.warning("Data file not found. Wait for the background script to run or trigger it manually.")
+
+# Committee Hearing Schedules (separate section so it always renders)
+st.markdown("---")
+st.subheader("📅 Upcoming Committee Hearings")
+
+committees = [
+    {"name": "Ethics & Elections", "file": "schedule_ethics_elections.txt"},
+    {"name": "House Education Policy", "file": "house_edu_policy.txt"},
+    {"name": "House Elementary & Secondary Education Admin", "file": "house_ele_second_admin.txt"},
+    {"name": "Senate Education", "file": "senate_education.txt"},
+]
+
+for committee in committees:
+    if os.path.exists(committee["file"]):
+        with open(committee["file"], "r") as f:
+            text = f.read().strip()
+        if "No Hearings Scheduled" in text:
+            st.markdown(f"**{committee['name']}:** No hearings scheduled")
+        else:
+            st.markdown(f"**{committee['name']}:** {text}")
+    else:
+        st.markdown(f"**{committee['name']}:** _No data yet_")
