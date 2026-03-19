@@ -83,6 +83,7 @@ def fetch_bill_data():
     # 3. Fetch fresh data from LegiScan
     url = f"https://api.legiscan.com/?key={API_KEY}&op=getMasterList&state={STATE}"
     response = requests.get(url)
+    response.raise_for_status()
     data = response.json()
 
     if data.get("status") != "OK":

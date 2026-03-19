@@ -73,6 +73,7 @@ def scrape_all_committees():
     for committee in COMMITTEES:
         try:
             response = requests.get(committee["url"])
+            response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
             
             # 2. THE PRECISION EXTRACTION: Only grab the specific HTML element
