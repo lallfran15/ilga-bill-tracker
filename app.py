@@ -86,7 +86,7 @@ for committee in committees:
     if os.path.exists(committee["file"]):
         with open(committee["file"], "r") as f:
             text = f.read().strip()
-        if "No Hearings Scheduled" in text:
+        if "no hearings scheduled" in text.lower():
             st.markdown(f"**{committee['name']}:** No hearings scheduled")
         else:
             st.markdown(f"**{committee['name']}:** {text}")
