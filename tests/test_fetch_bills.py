@@ -1,4 +1,7 @@
-from fetch_bills import detect_changes
+import os
+import tempfile
+
+from fetch_bills import detect_changes, read_bill_list, load_old_data
 
 
 SAMPLE_MASTER_LIST = {
@@ -88,3 +91,65 @@ class TestDetectChanges:
             assert "Action Date" in r
             assert "Notes" in r
             assert "LegiScan Link" in r
+
+
+class TestReadBillList:
+    def test_reads_bills_with_positions_and_notes(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("HB1234, core bill, some note\n")
+            f.write("SB5678, oppose, another note\n")
+            path = f.name
+        try:
+            bills = read_bill_list(path)
+            assert len(bills) == 2
+            assert bills["HB1234"]["position"] == "core bill"
+            assert bills["HB1234"]["note"] == "some note"
+            assert bills["SB5678"]["position"] == "oppose"
+        finally:
+            os.unlink(path)
+
+    def test_missing_file_returns_empty(self):
+        bills = read_bill_list("/nonexistent/path.txt")
+        assert bills == {}
+
+    def test_empty_file_returns_empty(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("")
+            path = f.name
+        try:
+            bills = read_bill_list(path)
+            assert bills == {}
+        finally:
+            os.unlink(path)
+
+    def test_bill_number_uppercased(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write("hb1234, monitor\n")
+            path = f.name
+        try:
+            bills = read_bill_list(path)
+            assert "HB1234" in bills
+        finally:
+            os.unlink(path)
+
+
+class TestLoadOldData:
+    def test_missing_file_returns_empty(self):
+        old = load_old_data("/nonexistent/path.csv")
+        assert old == {}
+
+    def test_loads_csv(self):
+        import pandas as pd
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            path = f.name
+        df = pd.DataFrame([
+            {"Bill Number": "HB1234", "Last Action": "Introduced"},
+            {"Bill Number": "SB5678", "Last Action": "Passed"},
+        ])
+        df.to_csv(path, index=False)
+        try:
+            old = load_old_data(path)
+            assert old["HB1234"] == "Introduced"
+            assert old["SB5678"] == "Passed"
+        finally:
+            os.unlink(path)
