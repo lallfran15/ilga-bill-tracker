@@ -13,6 +13,8 @@ def format_position(pos):
     p = str(pos).strip().lower()
     if p == "core bill":
         return "🟢 Core Bill"
+    elif p == "support":
+        return "🟢 Support"
     elif p == "oppose":
         return "🔴 Oppose"
     elif p == "monitor":
