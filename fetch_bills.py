@@ -20,6 +20,8 @@ EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
 STATE = "IL"
 BILLS_FILE = "tracked_bills.txt"
 OUTPUT_FILE = "bills_data.csv"
+MONITORED_BILLS_FILE = "monitored_bills.txt"
+MONITORED_OUTPUT_FILE = "monitored_bills_data.csv"
 
 
 def send_email_alert(changes):
@@ -89,40 +91,65 @@ def detect_changes(master_list, tracked_bills, old_data):
     return results, changes
 
 
-def fetch_bill_data():
-    if not API_KEY:
-        logging.error("LEGISCAN_API_KEY environment variable not found.")
-        return
-
-    # 1. Read tracked bills, positions, AND custom notes
-    tracked_bills = {}
+def read_bill_list(filepath):
+    """Read a bill list file and return a dict of {bill_number: {position, note}}."""
+    bills = {}
     try:
-        with open(BILLS_FILE, "r") as f:
+        with open(filepath, "r") as f:
             for line in f:
                 if line.strip():
                     parts = line.strip().split(",", 2)
                     bill_num = parts[0].strip().upper()
                     position = parts[1].strip() if len(parts) > 1 else ""
                     note = parts[2].strip() if len(parts) > 2 else ""
-                    tracked_bills[bill_num] = {
+                    bills[bill_num] = {
                         "position": position,
                         "note": note
                     }
     except FileNotFoundError:
-        logging.error("%s not found.", BILLS_FILE)
-        return
+        logging.warning("%s not found. Skipping.", filepath)
+    return bills
 
-    # 2. Load yesterday's data into memory to compare
+
+def load_old_data(filepath):
+    """Load previous bill data from CSV into a {bill_number: last_action} dict."""
     old_data = {}
-    if os.path.exists(OUTPUT_FILE):
+    if os.path.exists(filepath):
         try:
-            old_df = pd.read_csv(OUTPUT_FILE)
+            old_df = pd.read_csv(filepath)
             for _, row in old_df.iterrows():
                 old_data[row['Bill Number']] = row['Last Action']
         except Exception as e:
-            logging.warning("Could not read old data: %s", e)
+            logging.warning("Could not read old data from %s: %s", filepath, e)
+    return old_data
 
-    # 3. Fetch fresh data from LegiScan
+
+def save_results(results, filepath):
+    """Save bill results to CSV."""
+    if results:
+        df = pd.DataFrame(results)
+        df.to_csv(filepath, index=False)
+        logging.info("Updated %s with %d bills.", filepath, len(results))
+
+
+def fetch_bill_data():
+    if not API_KEY:
+        logging.error("LEGISCAN_API_KEY environment variable not found.")
+        return
+
+    # 1. Read both bill lists
+    tracked_bills = read_bill_list(BILLS_FILE)
+    if not tracked_bills:
+        logging.error("No tracked bills found in %s.", BILLS_FILE)
+        return
+
+    monitored_bills = read_bill_list(MONITORED_BILLS_FILE)
+
+    # 2. Load yesterday's data for comparison
+    old_tracked_data = load_old_data(OUTPUT_FILE)
+    old_monitored_data = load_old_data(MONITORED_OUTPUT_FILE)
+
+    # 3. Fetch fresh data from LegiScan (single API call for both lists)
     session = create_session()
     url = f"https://api.legiscan.com/?key={API_KEY}&op=getMasterList&state={STATE}"
 
@@ -143,21 +170,27 @@ def fetch_bill_data():
         logging.error("API returned empty master list.")
         return
 
-    # 4. Detect changes
-    results, changes = detect_changes(master_list, tracked_bills, old_data)
+    # 4. Process tracked bills (with email alerts)
+    results, changes = detect_changes(master_list, tracked_bills, old_tracked_data)
+    save_results(results, OUTPUT_FILE)
 
-    # 5. Save the new data
     if results:
-        df = pd.DataFrame(results)
-        df.to_csv(OUTPUT_FILE, index=False)
-        logging.info("Updated %s with %d bills.", OUTPUT_FILE, len(results))
-
         if changes:
             send_email_alert(changes)
         else:
-            logging.info("No status changes detected today.")
+            logging.info("No status changes detected for tracked bills.")
     else:
         logging.info("No tracked bills found in the current session.")
+
+    # 5. Process monitored bills (no email alerts)
+    if monitored_bills:
+        monitored_results, _ = detect_changes(master_list, monitored_bills, old_monitored_data)
+        save_results(monitored_results, MONITORED_OUTPUT_FILE)
+
+        if not monitored_results:
+            logging.info("No monitored bills found in the current session.")
+    else:
+        logging.info("No monitored bills configured. Skipping.")
 
 
 if __name__ == "__main__":
